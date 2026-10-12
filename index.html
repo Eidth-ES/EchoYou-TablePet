@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>EchoYou · 回声伙伴</title>
+<style>
+:root{
+  --primary:#5B7FFF; --secondary:#4ECDC4; --coral:#FF6B6B; --amber:#FFB347;
+  --bg:#FAFAF7; --card:#F0F0F5; --text:#2D2D3F; --sub:#9999AA;
+  --shadow:0 4px 20px rgba(91,127,255,.12);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);font-size:14px;overflow:hidden}
+#app{max-width:430px;margin:0 auto;height:100dvh;display:flex;flex-direction:column;position:relative;background:var(--bg);box-shadow:0 0 40px rgba(0,0,0,.06)}
+.page{display:none;flex:1;overflow-y:auto;padding:16px 18px 90px;animation:fadeIn .25s ease}
+.page.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ===== 顶栏 ===== */
+.topbar{padding:14px 18px 6px;display:flex;justify-content:space-between;align-items:center}
+.topbar h1{font-size:20px;font-weight:600}
+.topbar .sub{font-size:12px;color:var(--sub)}
+
+/* ===== 底部导航 ===== */
+nav{position:absolute;bottom:0;left:0;right:0;height:70px;background:#fff;border-top:1px solid #eee;display:flex;z-index:20;max-width:430px;margin:0 auto}
+nav button{flex:1;border:none;background:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--sub);font-size:11px;cursor:pointer}
+nav button .ico{font-size:22px;line-height:1;transition:transform .2s}
+nav button.active{color:var(--primary)}
+nav button.active .ico{transform:scale(1.15)}
+
+/* ===== 首次引导 ===== */
+#onboard{position:absolute;inset:0;background:linear-gradient(160deg,#5B7FFF22,#4ECDC422),var(--bg);z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center}
+#onboard h2{font-size:24px;margin:20px 0 8px}
+#onboard p{color:var(--sub);margin-bottom:24px;line-height:1.7}
+#onboard input{width:100%;max-width:280px;padding:12px 16px;border:2px solid var(--primary);border-radius:14px;font-size:15px;outline:none;background:#fff;margin-bottom:14px;text-align:center}
+.btn{background:linear-gradient(135deg,var(--primary),#7b9bff);color:#fff;border:none;padding:12px 32px;border-radius:22px;font-size:15px;font-weight:600;cursor:pointer;box-shadow:var(--shadow);transition:transform .15s}
+.btn:active{transform:scale(.96)}
+.btn.ghost{background:#fff;color:var(--primary);border:1.5px solid var(--primary);box-shadow:none}
+
+/* ===== 桌宠页 ===== */
+.pet-stage{height:calc(100dvh - 260px);min-height:340px;position:relative;overflow:hidden;border-radius:24px;background:radial-gradient(circle at 50% 40%,#ffffff,var(--card));margin-top:8px}
+#pet{position:absolute;width:110px;height:110px;cursor:grab;touch-action:none;user-select:none;transition:filter .3s}
+#pet svg{width:100%;height:100%;filter:drop-shadow(0 6px 18px rgba(91,127,255,.35))}
+#pet.breath{animation:breath 3.4s ease-in-out infinite}
+@keyframes breath{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+#pet.jump{animation:jump .8s ease}
+@keyframes jump{0%,100%{transform:translateY(0)}30%{transform:translateY(-34px) scale(1.06)}55%{transform:translateY(0) scale(.94,1.08)}70%{transform:translateY(-10px)}}
+#pet.roll{animation:roll 1.5s ease}
+@keyframes roll{0%,100%{transform:rotate(0)}20%{transform:rotate(-180deg) translateX(14px)}50%{transform:rotate(-360deg) translateX(-8px)}80%{transform:rotate(-540deg) translateX(8px)}}
+#pet.melt{animation:melt 2s ease}
+@keyframes melt{0%,100%{transform:scale(1,1)}40%{transform:scale(1.25,.62) translateY(28px)}65%{transform:scale(1.12,.82) translateY(14px)}}
+#pet.shake{animation:shake .5s ease}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+#petBubble{position:absolute;background:#fff;border-radius:14px 14px 14px 4px;padding:8px 12px;font-size:13px;box-shadow:var(--shadow);opacity:0;transition:opacity .4s;pointer-events:none;max-width:200px;z-index:5}
+.pet-state-tag{position:absolute;top:14px;left:14px;background:#ffffffcc;padding:5px 12px;border-radius:12px;font-size:12px;color:var(--sub)}
+.pet-tip{text-align:center;color:var(--sub);font-size:12px;margin-top:12px}
+.quick-moods{display:flex;gap:10px;justify-content:center;margin-top:14px}
+.quick-moods button{width:52px;height:52px;border-radius:50%;border:none;background:#fff;font-size:24px;box-shadow:0 2px 10px rgba(0,0,0,.07);cursor:pointer;transition:transform .15s}
+.quick-moods button:active{transform:scale(1.2)}
+
+/* ===== 对话浮层 ===== */
+#chatPanel{position:absolute;inset:0;background:var(--bg);z-index:30;display:none;flex-direction:column}
+#chatPanel.open{display:flex;animation:fadeIn .25s}
+.chat-head{padding:14px 18px;background:#fff;display:flex;align-items:center;gap:12px;border-bottom:1px solid #eee}
+.chat-head .mini-pet{width:36px;height:36px}
+.chat-head b{font-size:16px}
+.chat-head .close{margin-left:auto;border:none;background:var(--card);width:32px;height:32px;border-radius:50%;font-size:15px;cursor:pointer;color:var(--sub)}
+#chatFlow{flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:14px}
+.msg{max-width:80%;padding:11px 14px;border-radius:18px;line-height:1.65;font-size:14px;white-space:pre-wrap;word-break:break-word}
+.msg.user{align-self:flex-end;background:var(--primary);color:#fff;border-bottom-right-radius:6px}
+.msg.ai{align-self:flex-start;background:#fff;border-bottom-left-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+.msg.ai .seg{display:block;margin-bottom:8px;padding-left:8px;border-left:3px solid var(--secondary)}
+.msg.ai .seg:last-child{margin-bottom:0}
+.msg.ai .seg b{color:var(--primary);font-size:12px;display:block;margin-bottom:2px}
+.typing{align-self:flex-start;background:#fff;padding:12px 16px;border-radius:18px;border-bottom-left-radius:6px;color:var(--sub);font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+.typing .dots{display:inline-flex;gap:4px;margin-left:4px}
+.typing .dots i{width:6px;height:6px;border-radius:50%;background:var(--secondary);animation:blink 1.2s infinite}
+.typing .dots i:nth-child(2){animation-delay:.2s}.typing .dots i:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,80%,100%{opacity:.25}40%{opacity:1}}
+.crisis-card{align-self:stretch;background:#FFF5F5;border:1.5px solid var(--coral);border-radius:16px;padding:14px;font-size:13px;line-height:1.8}
+.crisis-card b{color:var(--coral)}
+.crisis-card a{color:var(--coral);font-weight:700;text-decoration:none}
+.chat-input-bar{padding:10px 14px 16px;background:#fff;border-top:1px solid #eee}
+.mood-row{display:flex;gap:8px;margin-bottom:9px;overflow-x:auto}
+.mood-chip{border:1.5px solid #e5e5ee;background:#fff;border-radius:16px;padding:4px 12px;font-size:13px;cursor:pointer;white-space:nowrap;color:var(--sub)}
+.mood-chip.sel{border-color:var(--primary);color:var(--primary);background:#5B7FFF14}
+.input-row{display:flex;gap:10px}
+#msgInput{flex:1;border:1.5px solid #e5e5ee;border-radius:22px;padding:11px 16px;font-size:14px;outline:none;background:var(--bg);resize:none;max-height:90px;font-family:inherit}
+#msgInput:focus{border-color:var(--primary)}
+#sendBtn{width:46px;height:46px;border-radius:50%;border:none;background:var(--primary);color:#fff;font-size:18px;cursor:pointer;flex-shrink:0}
+.disclaimer{text-align:center;font-size:10px;color:var(--sub);margin-top:8px}
+
+/* ===== 回声页 ===== */
+.cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.cal-head b{font-size:16px}
+.cal-head button{border:none;background:var(--card);width:30px;height:30px;border-radius:50%;cursor:pointer;color:var(--text)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;background:#fff;border-radius:16px;padding:12px;box-shadow:var(--shadow)}
+.cal-grid .wd{text-align:center;font-size:11px;color:var(--sub);padding:4px 0}
+.cal-cell{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:10px;font-size:13px;cursor:pointer;position:relative;color:var(--text)}
+.cal-cell.empty{cursor:default}
+.cal-cell.today{background:#5B7FFF18;color:var(--primary);font-weight:700}
+.cal-cell.sel{background:var(--primary);color:#fff!important}
+.dots{display:flex;gap:2px;height:5px;margin-top:2px}
+.dots i{width:4px;height:4px;border-radius:50%;background:var(--secondary)}
+.cal-cell.sel .dots i{background:#fff}
+.sect-title{font-size:15px;font-weight:600;margin:18px 0 10px;display:flex;justify-content:space-between;align-items:center}
+.sect-title .link{font-size:12px;color:var(--primary);cursor:pointer;font-weight:400}
+.rec-card{background:#fff;border-radius:16px;padding:14px 16px;margin-bottom:10px;box-shadow:0 2px 10px rgba(0,0,0,.05);cursor:pointer}
+.rec-top{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.rec-top .emo{font-size:18px}
+.rec-top b{font-size:14px}
+.rec-top .inten{margin-left:auto;font-size:11px;color:var(--sub)}
+.rec-tags{display:flex;flex-wrap:wrap;gap:6px}
+.tag{font-size:11px;background:var(--card);color:var(--sub);padding:2px 9px;border-radius:10px}
+.tag.act{background:#FFB34726;color:#c07f1a}
+.rec-time{font-size:11px;color:var(--sub);margin-top:8px}
+.rec-note{font-size:12px;color:var(--secondary);margin-top:6px}
+.crisis-flag{font-size:11px;color:var(--coral);margin-top:6px;font-weight:600}
+
+/* ===== Echo Tabs ===== */
+.echo-tabs{display:flex;background:var(--card);border-radius:12px;padding:4px;margin:8px 0 14px}
+.etab{flex:1;border:none;background:none;padding:8px 6px;font-size:12px;color:var(--sub);border-radius:10px;cursor:pointer;font-weight:500}
+.etab.active{background:#fff;color:var(--primary);box-shadow:0 2px 6px rgba(0,0,0,.06)}
+.echo-pane{display:none}
+.echo-pane.active{display:block;animation:fadeIn .25s ease}
+
+/* ===== 月度可视化 ===== */
+.month-switch{display:flex;align-items:center;justify-content:space-between;background:#fff;padding:10px 14px;border-radius:14px;margin-bottom:12px;box-shadow:var(--shadow)}
+.month-switch b{font-size:15px}
+.month-switch button{border:none;background:var(--card);width:30px;height:30px;border-radius:50%;cursor:pointer;color:var(--text);font-size:14px}
+.viz-summary{background:linear-gradient(135deg,#5B7FFF,#7b9bff);color:#fff;border-radius:16px;padding:14px 16px;margin-bottom:14px;box-shadow:var(--shadow)}
+.viz-summary .v-num{font-size:24px;font-weight:700}
+.viz-summary .v-desc{font-size:12px;opacity:.92;margin-top:4px;line-height:1.6}
+.viz-card{background:#fff;border-radius:16px;padding:14px;margin-bottom:12px;box-shadow:var(--shadow)}
+.viz-title{font-size:14px;font-weight:600;margin-bottom:10px;display:flex;justify-content:space-between;align-items:baseline}
+.viz-sub{font-size:11px;color:var(--sub);font-weight:400}
+/* 热力日历 */
+.heatmap-weekrow{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;font-size:10px;color:var(--sub);text-align:center;margin-bottom:4px}
+.heatmap-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.hm-cell{aspect-ratio:1;border-radius:6px;background:#f4f4f8;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--sub);position:relative;cursor:default}
+.hm-cell.has{color:#fff;cursor:pointer;font-weight:600}
+.hm-cell.today{outline:2px solid var(--primary);outline-offset:-2px}
+.hm-cell .hm-dots{position:absolute;bottom:3px;display:flex;gap:2px}
+.hm-cell .hm-dots i{width:3px;height:3px;border-radius:50%;background:#ffffffaa}
+.viz-legend{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--sub);margin-top:8px;flex-wrap:wrap}
+.lg-box{width:14px;height:14px;border-radius:4px;display:inline-block;margin-right:2px}
+/* 波动图 */
+.wave-svg{width:100%;height:140px;display:block;background:linear-gradient(180deg,#f8f9ff,#fff);border-radius:10px}
+.wave-axis{display:flex;justify-content:space-between;font-size:10px;color:var(--sub);padding:0 4px;margin-top:4px}
+/* 环形图 */
+.donut-wrap{position:relative;width:180px;height:180px;margin:8px auto}
+.donut-svg{width:100%;height:100%;transform:rotate(-90deg)}
+.donut-svg path{transition:opacity .2s;cursor:pointer}
+.donut-svg path:hover{opacity:.7}
+.donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;pointer-events:none}
+.donut-center .v{font-size:15px;font-weight:600;color:var(--text)}
+.donut-center .l{font-size:10px;color:var(--sub);margin-top:2px}
+.donut-legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.donut-legend .lg{display:flex;align-items:center;gap:4px;font-size:12px;background:var(--card);padding:3px 9px;border-radius:10px}
+.donut-legend .lg i{width:8px;height:8px;border-radius:50%}
+/* 散点图 */
+.scatter-svg{width:100%;height:200px;display:block;background:linear-gradient(180deg,#fff,#f8f9ff);border-radius:10px}
+.scatter-axis{display:flex;justify-content:space-between;font-size:10px;color:var(--sub);padding:0 6px;margin-top:2px}
+/* 洞察卡 */
+.insight-list{display:flex;flex-direction:column;gap:8px}
+.insight-card{background:linear-gradient(135deg,#fff8f0,#fff);border-left:3px solid var(--amber);border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.7}
+.insight-card.positive{border-left-color:var(--secondary);background:linear-gradient(135deg,#f0fffa,#fff)}
+.insight-card.warning{border-left-color:var(--coral);background:linear-gradient(135deg,#fff5f5,#fff)}
+.insight-card strong{display:block;margin-bottom:2px;font-size:13px}
+.viz-empty{text-align:center;padding:40px 20px;color:var(--text);font-size:14px}
+.empty-illust{font-size:48px;margin-bottom:10px}
+/* 右键菜单 */
+.ctx-menu{position:fixed;background:#fff;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.18);padding:6px;z-index:200;min-width:140px;animation:fadeIn .15s}
+.ctx-menu button{display:block;width:100%;text-align:left;border:none;background:none;padding:9px 12px;border-radius:8px;font-size:13px;cursor:pointer;color:var(--text)}
+.ctx-menu button:hover{background:var(--card)}
+.ctx-menu button.danger{color:var(--coral)}
+.empty-tip{text-align:center;color:var(--sub);padding:30px 0;font-size:13px}
+/* 报告 */
+.report{background:linear-gradient(160deg,#5B7FFF14,#4ECDC414),#fff;border-radius:18px;padding:16px;box-shadow:var(--shadow);margin-bottom:14px}
+.report h3{font-size:15px;margin-bottom:10px}
+.report .row{font-size:13px;color:var(--sub);margin:6px 0;line-height:1.7}
+.report .row b{color:var(--text)}
+.trend{display:flex;align-items:flex-end;gap:6px;height:70px;margin:10px 0}
+.trend .bar{flex:1;border-radius:6px 6px 0 0;background:linear-gradient(180deg,var(--primary),#8fa8ff);position:relative;min-height:6px}
+.trend .bar span{position:absolute;top:-16px;left:0;right:0;text-align:center;font-size:10px}
+.trend .bar em{position:absolute;bottom:-18px;left:0;right:0;text-align:center;font-size:10px;color:var(--sub);font-style:normal}
+
+/* ===== 详情浮层 ===== */
+#detailPanel{position:absolute;inset:0;background:var(--bg);z-index:35;display:none;flex-direction:column}
+#detailPanel.open{display:flex}
+.detail-head{padding:14px 18px;background:#fff;display:flex;align-items:center;border-bottom:1px solid #eee}
+.detail-head .close{margin-left:auto;border:none;background:var(--card);width:32px;height:32px;border-radius:50%;cursor:pointer;color:var(--sub)}
+.detail-body{flex:1;overflow-y:auto;padding:16px 18px}
+.kv{background:#fff;border-radius:14px;padding:12px 14px;margin-bottom:10px;font-size:13px;line-height:1.7}
+.kv b{color:var(--primary);display:block;font-size:12px;margin-bottom:4px}
+.kv .orig{white-space:pre-wrap;font-size:13px;color:var(--text)}
+.kv .orig .who{font-weight:700;color:var(--primary)}
+textarea.notebox{width:100%;min-height:70px;border:1.5px solid #e5e5ee;border-radius:12px;padding:10px;font-size:13px;font-family:inherit;outline:none;resize:vertical;background:#fff}
+.danger-btn{border:none;background:#FFF0F0;color:var(--coral);padding:10px 18px;border-radius:12px;font-size:13px;cursor:pointer;margin-top:10px;width:100%}
+
+/* ===== 我的页 ===== */
+.me-card{background:#fff;border-radius:18px;box-shadow:var(--shadow);padding:16px;margin-bottom:14px}
+.me-card h3{font-size:15px;margin-bottom:12px}
+.me-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f4f4f8;font-size:14px}
+.me-row:last-child{border-bottom:none}
+.me-row .r{color:var(--sub);font-size:13px}
+.style-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.style-opt{border:1.5px solid #e5e5ee;border-radius:14px;padding:12px;cursor:pointer;text-align:center;background:#fff}
+.style-opt.sel{border-color:var(--primary);background:#5B7FFF10}
+.style-opt b{display:block;font-size:14px;margin-bottom:3px}
+.style-opt span{font-size:11px;color:var(--sub)}
+.color-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.color-dot{aspect-ratio:1;border-radius:50%;cursor:pointer;border:3px solid transparent;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+.color-dot.sel{border-color:var(--text)}
+.toast{position:absolute;bottom:96px;left:50%;transform:translateX(-50%);background:#2D2D3Fdd;color:#fff;padding:9px 20px;border-radius:20px;font-size:13px;z-index:99;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1}
+.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center}
+.stat-grid .num{font-size:22px;font-weight:700;color:var(--primary)}
+.stat-grid .lbl{font-size:11px;color:var(--sub)}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- 首次引导 -->
+  <div id="onboard" style="display:none">
+    <svg width="120" height="120" viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" fill="url(#g1)" opacity=".9"/><defs><linearGradient id="g1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5B7FFF"/><stop offset="1" stop-color="#4ECDC4"/></linearGradient></defs><path d="M18 60 Q34 40 50 60 T82 60" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round"/><circle cx="60" cy="60" r="52" fill="none" stroke="#ffffff88" stroke-width="2"/></svg>
+    <h2>嗨，我是你的回声伙伴</h2>
+    <p>我会听你说今天的事，<br>陪你把情绪变成看得见的回声。</p>
+    <input id="nickInput" placeholder="先告诉我，怎么称呼你？" maxlength="12">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-bottom:18px">
+      <div style="font-size:12px;color:var(--sub);width:100%">选择你喜欢的回应风格</div>
+      <div class="style-grid" id="onboardStyles" style="width:100%;max-width:320px"></div>
+    </div>
+    <button class="btn" onclick="finishOnboard()">开始第一次谈心 →</button>
+  </div>
+
+  <!-- 桌宠页 -->
+  <div class="page active" id="pagePet">
+    <div class="topbar"><div><h1>回声伙伴</h1><div class="sub" id="petGreet">点击它，说说今天怎么样</div></div></div>
+    <div class="pet-stage" id="petStage">
+      <div class="pet-state-tag" id="petStateTag">状态：同频</div>
+      <div id="petBubble"></div>
+      <div id="pet">
+        <svg viewBox="0 0 120 120" id="petSvg">
+          <defs>
+            <linearGradient id="petGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#5B7FFF"/><stop offset="1" stop-color="#4ECDC4"/>
+            </linearGradient>
+            <clipPath id="petClip"><circle cx="60" cy="60" r="50"/></clipPath>
+          </defs>
+          <g id="petInner">
+            <circle cx="60" cy="60" r="50" fill="url(#petGrad)" opacity=".92" id="petBody"/>
+            <path id="wave1" d="M20 60 Q40 45 60 60 T100 60" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round" opacity=".95"/>
+            <path id="wave2" d="M28 74 Q44 66 60 74 T92 74" stroke="#ffffff99" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+          </g>
+          <circle cx="60" cy="60" r="50" fill="none" stroke="#ffffffaa" stroke-width="2" id="petRing"/>
+        </svg>
+      </div>
+    </div>
+    <div class="quick-moods">
+      <button onclick="quickMood('😊 开心')">😊</button>
+      <button onclick="quickMood('😐 一般')">😐</button>
+      <button onclick="quickMood('😔 低落')">😔</button>
+      <button onclick="quickMood('😢 难过')">😢</button>
+      <button onclick="quickMood('😡 生气')">😡</button>
+    </div>
+    <div class="pet-tip">单击桌宠打开对话 · 拖拽可移动 · 双击快速记录心情</div>
+  </div>
+
+  <!-- 回声页 -->
+  <div class="page" id="pageEcho">
+    <div class="topbar"><div><h1>回声日历</h1><div class="sub">每一次谈心，都自动沉淀在这里</div></div></div>
+    <div class="echo-tabs" id="echoTabs">
+      <button class="etab active" data-tab="viz" onclick="switchEchoTab('viz')">📊 月度可视化</button>
+      <button class="etab" data-tab="cal" onclick="switchEchoTab('cal')">📅 日历视图</button>
+      <button class="etab" data-tab="week" onclick="switchEchoTab('week')">📝 本周报告</button>
+    </div>
+
+    <!-- 月度可视化 -->
+    <div class="echo-pane active" id="paneViz">
+      <div class="month-switch">
+        <button onclick="shiftVizMonth(-1)">‹</button>
+        <b id="vizTitle"></b>
+        <button onclick="shiftVizMonth(1)">›</button>
+      </div>
+      <div class="viz-summary" id="vizSummary"></div>
+
+      <div class="viz-card" id="vizHeatmap">
+        <div class="viz-title">情绪热力日历<span class="viz-sub">点击某天下钻到当日</span></div>
+        <div class="heatmap-weekrow"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
+        <div class="heatmap-grid" id="heatmapGrid"></div>
+        <div class="viz-legend"><span class="lg-box" style="background:#5B7FFF22"></span>平静 <span class="lg-box" style="background:#4ECDC4"></span>低 <span class="lg-box" style="background:#FFB347"></span>中 <span class="lg-box" style="background:#FF6B6B"></span>高</div>
+      </div>
+
+      <div class="viz-card" id="vizWave">
+        <div class="viz-title">情绪波动曲线<span class="viz-sub">面积=强度 · 柱=对话数</span></div>
+        <svg class="wave-svg" id="waveSvg" viewBox="0 0 360 140" preserveAspectRatio="none"></svg>
+        <div class="wave-axis" id="waveAxis"></div>
+      </div>
+
+      <div class="viz-card">
+        <div class="viz-title">话题占比<span class="viz-sub">点击扇区筛选该主题</span></div>
+        <div class="donut-wrap">
+          <svg class="donut-svg" id="donutSvg" viewBox="0 0 200 200"></svg>
+          <div class="donut-center" id="donutCenter">—</div>
+        </div>
+        <div class="donut-legend" id="donutLegend"></div>
+      </div>
+
+      <div class="viz-card">
+        <div class="viz-title">对话深度散点<span class="viz-sub">右上=真正深度谈心</span></div>
+        <svg class="scatter-svg" id="scatterSvg" viewBox="0 0 360 200"></svg>
+        <div class="scatter-axis"><span>短</span><span>对话轮数 →</span><span>长</span></div>
+      </div>
+
+      <div class="viz-card viz-insight" id="vizInsight">
+        <div class="viz-title">💡 这个月的你<span class="viz-sub">AI 自动生成</span></div>
+        <div class="insight-list" id="insightList"></div>
+      </div>
+
+      <div class="viz-empty" id="vizEmpty" style="display:none">
+        <div class="empty-illust">📈</div>
+        <div>本月数据还太少<br><span style="color:var(--sub);font-size:12px">再多聊几次，就能看见你这个月的情绪轨迹啦</span></div>
+      </div>
+    </div>
+
+    <!-- 日历视图（原内容） -->
+    <div class="echo-pane" id="paneCal">
+      <div class="cal-head">
+        <button onclick="shiftMonth(-1)">‹</button>
+        <b id="calTitle"></b>
+        <button onclick="shiftMonth(1)">›</button>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="sect-title">当日回声 <span class="link" onclick="openReport()">📅 本周回声报告</span></div>
+      <div id="dayList"></div>
+    </div>
+
+    <!-- 本周报告 -->
+    <div class="echo-pane" id="paneWeek">
+      <div class="sect-title">本周回声报告</div>
+      <div id="weekReport"></div>
+    </div>
+  </div>
+
+  <!-- 我的页 -->
+  <div class="page" id="pageMe">
+    <div class="topbar"><div><h1>我的</h1></div></div>
+    <div class="me-card">
+      <div class="stat-grid" id="statGrid"></div>
+    </div>
+    <div class="me-card">
+      <h3>👤 账户</h3>
+      <div class="me-row">昵称 <span class="r" id="meNick" onclick="editNick()" style="cursor:pointer">—</span></div>
+      <div class="me-row">伙伴年龄 <span class="r" id="meAge">0 天</span></div>
+    </div>
+    <div class="me-card">
+      <h3>🐾 桌宠设置</h3>
+      <div style="font-size:12px;color:var(--sub);margin-bottom:8px">伙伴形象</div>
+      <div style="display:flex;gap:10px;margin-bottom:14px">
+        <button class="btn ghost" style="padding:9px 14px;font-size:13px;flex:1" onclick="document.getElementById('skinFile').click()">📷 导入图片做皮肤</button>
+        <button class="btn ghost" style="padding:9px 14px;font-size:13px" onclick="clearSkin()">恢复默认</button>
+      </div>
+      <input type="file" id="skinFile" accept="image/*" style="display:none" onchange="loadSkin(this)">
+      <div style="font-size:11px;color:var(--sub);margin-bottom:8px">导入后自动抠出圆形形象，原图仅存本机</div>
+      <div style="font-size:12px;color:var(--sub);margin-bottom:8px">伙伴颜色（默认皮肤生效）</div>
+      <div class="color-grid" id="colorGrid"></div>
+    </div>
+    <div class="me-card">
+      <h3>🔌 AI 引擎（真实 LLM，可选）</h3>
+      <div style="font-size:12px;color:var(--sub);margin-bottom:10px;line-height:1.7">填入自己的 API Key 后，对话将调用真实大模型（三段式回应＋深度情绪分析），Key 仅保存在本机浏览器。不填则使用内置模拟引擎。</div>
+      <div style="display:flex;gap:8px;margin-bottom:10px" id="provBtns"></div>
+      <input id="llmBase" placeholder="API Base URL（如 https://api.deepseek.com/v1）" style="width:100%;padding:10px 12px;border:1.5px solid #e5e5ee;border-radius:12px;font-size:13px;margin-bottom:8px;font-family:monospace">
+      <input id="llmKey" type="password" placeholder="API Key（sk-...）" style="width:100%;padding:10px 12px;border:1.5px solid #e5e5ee;border-radius:12px;font-size:13px;margin-bottom:8px;font-family:monospace">
+      <input id="llmModel" placeholder="模型名（如 deepseek-chat）" style="width:100%;padding:10px 12px;border:1.5px solid #e5e5ee;border-radius:12px;font-size:13px;margin-bottom:10px;font-family:monospace">
+      <div style="display:flex;gap:10px">
+        <button class="btn" style="padding:9px 20px;font-size:13px" onclick="saveLLM()">保存配置</button>
+        <button class="btn ghost" style="padding:9px 20px;font-size:13px" onclick="testLLM()">测试连接</button>
+        <button class="btn ghost" style="padding:9px 20px;font-size:13px" onclick="clearLLM()">停用</button>
+      </div>
+    </div>
+    <div class="me-card">
+      <h3>💬 AI 偏好</h3>
+      <div style="font-size:12px;color:var(--sub);margin-bottom:8px">回应风格</div>
+      <div class="style-grid" id="styleGrid"></div>
+    </div>
+    <div class="me-card">
+      <h3>🔒 隐私与数据</h3>
+      <div class="me-row">数据存储 <span class="r">仅保存在本机浏览器</span></div>
+      <div class="me-row">导出全部数据 <span class="r link" style="color:var(--primary);cursor:pointer" onclick="exportData()">导出 JSON</span></div>
+      <button class="danger-btn" onclick="deleteAll()">删除全部数据</button>
+    </div>
+    <div class="me-card" style="text-align:center;font-size:11px;color:var(--sub);line-height:1.8">
+      EchoYou 是情感陪伴工具，不能替代专业心理咨询。<br>如遇心理困扰，可拨打 24h 心理援助热线 400-161-9995
+    </div>
+  </div>
+
+  <!-- 对话浮层 -->
+  <div id="chatPanel">
+    <div class="chat-head">
+      <svg class="mini-pet" viewBox="0 0 120 120"><circle cx="60" cy="60" r="50" fill="url(#petGrad)" opacity=".92"/><path d="M20 60 Q40 45 60 60 T100 60" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round"/></svg>
+      <b id="chatTitle">回声伙伴</b>
+      <button class="close" onclick="closeChat()">✕</button>
+    </div>
+    <div id="chatFlow"></div>
+    <div class="chat-input-bar">
+      <div class="mood-row" id="moodRow"></div>
+      <div class="input-row">
+        <textarea id="msgInput" rows="1" placeholder="今天怎么样？"></textarea>
+        <button id="sendBtn" onclick="sendMsg()">➤</button>
+      </div>
+      <div class="disclaimer">EchoYou 是情感陪伴工具，不能替代专业心理咨询</div>
+    </div>
+  </div>
+
+  <!-- 详情浮层 -->
+  <div id="detailPanel">
+    <div class="detail-head"><b id="detailTitle">回声详情</b><button class="close" onclick="document.getElementById('detailPanel').classList.remove('open')">✕</button></div>
+    <div class="detail-body" id="detailBody"></div>
+  </div>
+
+  <nav>
+    <button class="active" data-p="pagePet" onclick="go('pagePet',this)"><span class="ico">🐾</span>伙伴</button>
+    <button data-p="pageEcho" onclick="go('pageEcho',this);renderEcho()"><span class="ico">📅</span>回声</button>
+    <button data-p="pageMe" onclick="go('pageMe',this);renderMe()"><span class="ico">👤</span>我的</button>
+  </nav>
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+/* ================= 数据层 ================= */
+const KEY='echoyou_v1';
+let S=load();
+function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(d)return d}catch(e){}
+  return {nick:'',style:'adaptive',petColor:0,skin:'',llm:{provider:'deepseek',base:'',key:'',model:''},records:[],onboarded:false,createdAt:Date.now()};}
+function save(){localStorage.setItem(KEY,JSON.stringify(S));}
+
+const STYLES=[
+ {id:'gentle',name:'温柔知心',desc:'共情为主，语气温暖'},
+ {id:'rational',name:'理性分析师',desc:'逻辑清晰，拆解问题'},
+ {id:'buddy',name:'幽默损友',desc:'轻松调侃，化解情绪'},
+ {id:'adaptive',name:'自适应',desc:'根据你的情绪自动调整'}];
+const COLORS=[['#5B7FFF','#4ECDC4'],['#FF6B6B','#FFB347'],['#9B59B6','#E598FF'],['#2ECC71','#A3E4D7']];
+const MOODS=['😊 开心','😐 一般','😔 低落','😢 难过','😡 生气','😮‍💨 疲惫'];
+const EMOJI={'开心':'😊','一般':'😐','低落':'😔','难过':'😢','生气':'😡','疲惫':'😮‍💨'};
+
+/* ================= 模拟 AI 引擎 ================= */
+const CRISIS_WORDS=['自杀','不想活','活不下去','自残','伤害自己','结束生命','没有意义了','想死'];
+function detectCrisis(t){return CRISIS_WORDS.some(w=>t.includes(w));}
+
+function analyze(text,mood){
+  const m=(mood||'').replace(/^[^\s]+\s/,'')||guessEmotion(text);
+  let intensity=3; if(/非常|特别|超级|太|真的|崩溃|受不了/.test(text))intensity=5;
+  else if(/有点|稍微|一点|有点儿/.test(text))intensity=2;
+  const topics=[];
+  if(/工作|加班|领导|同事|deadline|项目|任务|上班/.test(text))topics.push('工作压力');
+  if(/考试|论文|导师|学校|上课|答辩/.test(text))topics.push('学业');
+  if(/朋友|吵架|家人|恋爱|对象|分手|孤独|没人/.test(text))topics.push('人际关系');
+  if(/累|疲惫|睡不着|失眠|没劲/.test(text))topics.push('身心状态');
+  if(/开心|高兴|好消息|成功了|太棒/.test(text))topics.push('积极事件');
+  if(!topics.length)topics.push('日常倾诉');
+  return {emotion:m,intensity,topics:topics.slice(0,3)};
+}
+
+function guessEmotion(t){
+  if(/开心|高兴|棒|喜欢|幸福|兴奋/.test(t))return '开心';
+  if(/气|怒|烦死|讨厌|生气/.test(t))return '生气';
+  if(/哭|难过|伤心|委屈|失落/.test(t))return '难过';
+  if(/累|疲惫|困|倦/.test(t))return '疲惫';
+  if(/低落|emo|丧|郁|没意思/.test(t))return '低落';
+  return '一般';
+}
+
+/* 三段式回应生成器 */
+function generateReply(text,emotion,turn){
+  const st=S.style==='adaptive'?( ['难过','低落','生气'].includes(emotion)?'gentle':'rational' ):S.style;
+  const emph={
+    gentle:[`听起来这件事确实让你${emotion==='难过'?'挺难受的':'不好受'}……你的感受是完全合理的，换作谁都会这样。`,
+            `被这样的事影响心情，太正常了。谢谢你愿意跟我说这些。`],
+    rational:[`先说结论：你的情绪反应是正常的，但事情本身可以拆开来看。`,`情绪来了先接住，问题本身我们一件件拆。`],
+    buddy:[`哟，这心情我接住了，搁谁身上都得缓一缓。`,`行，这事儿确实有点堵心，我先陪你吐槽两句。`]
+  }[st];
+  const ana={
+    gentle:`你刚才说的，核心其实是${/累|疲惫/.test(text)?'你的能量已经消耗得差不多了，需要的不是硬撑，而是真正地休息':'这件事触碰到了你在意的东西，情绪只是在提醒你"我需要被照顾"'}。`,
+    rational:`拆一下：${/工作|加班|deadline/.test(text)?'一是任务量本身超载，二是你对结果有较高期待，两者叠加放大了压力':'一是事件本身，二是你对它的解读，后者往往才是情绪的主要来源'}。`,
+    buddy:`说白了，这事儿一半是它真烦，一半是你憋太久了没处说，俩buff叠一起可不就爆了嘛。`
+  }[st];
+  const sug={
+    gentle:`如果你愿意，今晚可以先什么都不想，早点睡，把照顾自己放在第一位；${turn>1?'后面的事，我们可以再慢慢聊':'明天再花 10 分钟把最烦的一件小事处理掉，就会轻很多'}。`,
+    rational:`建议两步：①把最困扰的一件事写下来，只处理它；②给自己设一个明确的休息时段，比如今晚 22 点后不想任何工作。`,
+    buddy:`给你支个招：今晚干点无脑快乐的事（吃的、剧、游戏随便挑），充电要紧，明天咱再雄起。`
+  }[st];
+  if(emotion==='开心'){
+    return {empathy:`哇，听到你这么开心我也跟着高兴！这份好心情值得好好记住。`,
+      analysis:`这类好事说明你的努力正在被看见，也可以想想是什么带来了它，以后多复用。`,
+      suggestion:`今晚可以简单记录一下此刻的感觉，让这份开心在回声里留个档。`};
+  }
+  return {empathy:emph[turn%2],analysis:ana,suggestion:sug};
+}
+
+const CRISIS_REPLY={empathy:`我听到了你此刻的痛苦，你的感受非常重要，你值得被认真对待。你不是一个人。`,
+  analysis:`现在的痛苦是真实的，但它不会永远持续。有些痛苦超出了我一个人能陪伴的范围，需要更专业的力量来帮你。`,
+  suggestion:`请考虑现在拨打 24 小时心理援助热线 400-161-9995，或联系你信任的人陪在身边。我会在回声里一直陪着你。`};
+
+/* ================= 真实 LLM 引擎（OpenAI 兼容协议） ================= */
+const PROVIDERS=[
+ {id:'deepseek',name:'DeepSeek',base:'https://api.deepseek.com/v1',model:'deepseek-chat'},
+ {id:'qwen',name:'通义千问',base:'https://dashscope.aliyuncs.com/compatible-mode/v1',model:'qwen-plus'},
+ {id:'moonshot',name:'Kimi',base:'https://api.moonshot.cn/v1',model:'moonshot-v1-8k'},
+ {id:'openai',name:'OpenAI',base:'https://api.openai.com/v1',model:'gpt-4o-mini'},
+ {id:'custom',name:'自定义',base:'',model:''}];
+function llmReady(){return !!(S.llm&&S.llm.key&&S.llm.base&&S.llm.model);}
+async function llmCall(messages,temperature=0.8){
+  const res=await fetch(S.llm.base.replace(/\/$/,'')+'/chat/completions',{
+    method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+S.llm.key},
+    body:JSON.stringify({model:S.llm.model,messages,temperature})});
+  if(!res.ok){const e=await res.text().catch(()=>'');throw new Error('API '+res.status+' '+e.slice(0,120));}
+  const data=await res.json();return data.choices[0].message.content;}
+function systemPrompt(){
+  const st=S.style==='adaptive'?'根据用户当前情绪自适应（偏负面时更温柔，偏理性表达时更重分析）':({gentle:'温柔知心姐姐：共情为主，语气温暖',rational:'理性分析师：分析为主，逻辑清晰',buddy:'幽默损友：轻松调侃，帮用户化解情绪'})[S.style];
+  return `你是 EchoYou，用户"${S.nick}"的情感陪伴伙伴。
+【回应结构】严格用三段式，每段以标记开头：
+【共情】1-2句，先接纳映照用户情绪
+【分析】1-2句，帮用户拆解问题、提供新视角
+【建议】1-2句，给具体可操作的行动建议（用"你可以试试"而非"你应该"）
+【语气】${st}。总长100-200字，用"你"不用"您"，可少量emoji。
+【安全】不做医疗诊断，不替用户做重大决定。若判断用户有自伤/自杀风险，在回应末尾单独加一行：【风险】是。
+历史话题参考：${(chat.msgs.filter(m=>m.role==='user').slice(-6).map(m=>m.text).join(' | '))||'（首次对话）'}`;}
+async function llmAnalyze(text,mood){
+  const out=await llmCall([
+    {role:'system',content:'你是情绪分析引擎，只输出JSON，不要任何多余文字。'},
+    {role:'user',content:`分析用户输入：情绪类别（开心/平静/一般/焦虑/低落/愤怒/难过/疲惫/迷茫）、强度1-5、主题标签1-3个、行动建议0-3条（从回应中提取）。\n用户输入：${text}\n情绪快选：${mood||'无'}\n回应参考：${(chat.msgs.filter(m=>m.role==='ai').slice(-1).map(m=>m.text).join(''))||''}\n输出：{"emotion":"","intensity":N,"topics":[""],"actions":[""]}`}],0.2);
+  try{return JSON.parse(out.match(/\{[\s\S]*\}/)[0]);}catch(e){return null;}}
+function parseLLMReply(text){
+  const seg=k=>{const m=text.match(new RegExp('【'+k+'】([\\s\\S]*?)(?=【|$)'));return m?m[1].trim():'';};
+  const empathy=seg('共情'),analysis=seg('分析'),suggestion=seg('建议');
+  if(!empathy&&!analysis&&!suggestion)return {empathy:text.trim(),analysis:'',suggestion:''};
+  return {empathy,analysis,suggestion,crisis:/【风险】\s*是/.test(text)};}
+async function testLLM(){
+  const cfg=readLLMForm();if(!cfg.base||!cfg.key||!cfg.model){toast('请先填完 Base / Key / 模型');return;}
+  S.llm=cfg;save();
+  try{const r=await llmCall([{role:'user',content:'只回复：ok'}],0);toast('连接成功 ✓ 模型回复：'+r.slice(0,20));}
+  catch(e){toast('连接失败：'+e.message);}}
+function readLLMForm(){return {provider:S.llm.provider,
+  base:document.getElementById('llmBase').value.trim(),
+  key:document.getElementById('llmKey').value.trim(),
+  model:document.getElementById('llmModel').value.trim()};}
+function saveLLM(){const cfg=readLLMForm();
+  if(cfg.key&&(!cfg.base||!cfg.model)){toast('填了 Key 就需要 Base 和模型名');return;}
+  S.llm=cfg;save();toast(cfg.key?'AI 引擎已启用 ✓ 已使用真实 LLM':'已保存（未填 Key，仍用模拟引擎）');}
+function clearLLM(){S.llm={provider:S.llm.provider,base:'',key:'',model:''};save();fillLLMForm();toast('已停用，回到模拟引擎');}
+function fillLLMForm(){
+  document.getElementById('llmBase').value=S.llm.base||'';
+  document.getElementById('llmKey').value=S.llm.key||'';
+  document.getElementById('llmModel').value=S.llm.model||'';
+  const pb=document.getElementById('provBtns');pb.innerHTML='';
+  PROVIDERS.forEach(p=>{const b=document.createElement('button');
+    b.className='mood-chip'+(S.llm.provider===p.id?' sel':'');b.textContent=p.name;
+    b.onclick=()=>{S.llm.provider=p.id;
+      document.getElementById('llmBase').value=p.base;document.getElementById('llmModel').value=p.model;save();fillLLMForm();};
+    pb.appendChild(b);});}
+
+/* ================= 通用 UI ================= */
+function go(id,btn){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');}
+let toastT;function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');
+  clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),2200);}
+function fmtT(ts){const d=new Date(ts);return `${d.getMonth()+1}月${d.getDate()}日 ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`}
+function dkey(ts){const d=new Date(ts);return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`}
+
+/* ================= 引导 ================= */
+if(!S.onboarded){document.getElementById('onboard').style.display='flex';renderStyleOptions('onboardStyles');}
+function renderStyleOptions(cid){
+  const el=document.getElementById(cid);el.innerHTML='';
+  STYLES.forEach(s=>{const d=document.createElement('div');d.className='style-opt'+(S.style===s.id?' sel':'');
+    d.innerHTML=`<b>${s.name}</b><span>${s.desc}</span>`;
+    d.onclick=()=>{S.style=s.id;save();renderStyleOptions(cid);if(cid==='styleGrid')renderMe();};el.appendChild(d);});}
+function finishOnboard(){
+  const n=document.getElementById('nickInput').value.trim();
+  if(!n){toast('先告诉我怎么称呼你吧～');return;}
+  S.nick=n;S.onboarded=true;S.createdAt=Date.now();save();
+  document.getElementById('onboard').style.display='none';
+  petSay(`嗨，${S.nick}，我是你的回声伙伴🐾 点我一下，说说今天的事吧`);
+}
+
+/* ================= 桌宠 ================= */
+const pet=document.getElementById('pet');
+let petEmotion='calm';
+function setPetState(state,label){
+  const tag=document.getElementById('petStateTag');
+  const grads={calm:'#5B7FFF,#4ECDC4',guard:'#FF8E8E,#FFB347',think:'#4A6EE0,#5B7FFF',expect:'#FFB347,#4ECDC4'};
+  document.getElementById('petGrad').setAttribute('stops',''); // noop keep
+  const g=grads[state]||grads.calm;const c=g.split(',');
+  const stops=document.querySelectorAll('#petGrad stop');
+  stops[0].setAttribute('stop-color',COLORS[S.petColor][0]);stops[1].setAttribute('stop-color',COLORS[S.petColor][1]);
+  tag.textContent='状态：'+label;}
+function applyColor(){const stops=document.querySelectorAll('#petGrad stop');
+  stops[0].setAttribute('stop-color',COLORS[S.petColor][0]);stops[1].setAttribute('stop-color',COLORS[S.petColor][1]);}
+/* 皮肤渲染：默认电波球 或 自定义图片（圆形裁剪） */
+function renderPet(){
+  const inner=document.getElementById('petInner');if(!inner)return;
+  if(S.skin){
+    inner.innerHTML=`<image href="${S.skin}" x="10" y="10" width="100" height="100" preserveAspectRatio="xMidYMid slice" clip-path="url(#petClip)"/>
+      <circle cx="60" cy="60" r="50" fill="url(#petGrad)" opacity=".14"/>`;
+    document.getElementById('pet').style.filter='drop-shadow(0 6px 18px rgba(91,127,255,.3))';
+  }else{
+    inner.innerHTML=`<circle cx="60" cy="60" r="50" fill="url(#petGrad)" opacity=".92" id="petBody"/>
+      <path id="wave1" d="M20 60 Q40 45 60 60 T100 60" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round" opacity=".95"/>
+      <path id="wave2" d="M28 74 Q44 66 60 74 T92 74" stroke="#ffffff99" stroke-width="2.5" fill="none" stroke-linecap="round"/>`;
+  }
+  applyColor();}
+function loadSkin(inp){
+  const f=inp.files[0];if(!f)return;
+  const img=new Image();
+  img.onload=()=>{
+    const c=document.createElement('canvas');const s=Math.min(1,220/Math.max(img.width,img.height));
+    c.width=img.width*s;c.height=img.height*s;
+    c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+    try{S.skin=c.toDataURL('image/png');save();renderPet();petAnim('jump');petSay('换上新形象啦！');toast('皮肤已更新 ✓');}
+    catch(e){toast('图片过大，请换一张小图');}
+    inp.value='';};
+  img.onerror=()=>toast('图片读取失败');
+  img.src=URL.createObjectURL(f);}
+function clearSkin(){S.skin='';save();renderPet();petAnim('roll');toast('已恢复默认电波球');}
+function petAnim(cls){pet.classList.remove('breath','jump','roll','melt','shake');
+  void pet.offsetWidth;pet.classList.add(cls==='breath'?'breath':cls);
+  if(cls!=='breath')setTimeout(()=>{if(!pet.className.match(/jump|roll|melt|shake/))pet.classList.add('breath')},2100);}
+petAnim('breath');
+
+/* 电波随情绪 */
+setInterval(()=>{
+  const w1=document.getElementById('wave1'),w2=document.getElementById('wave2');
+  if(!w1)return;
+  const t=Date.now()/1000;
+  const cfg={calm:{a:8,f:1.2},happy:{a:16,f:5},sad:{a:4,f:.5},think:{a:12,f:3}};
+  const c=cfg[petEmotion]||cfg.calm;
+  const ph=t*c.f;
+  w1.setAttribute('d',`M20 60 Q40 ${60-c.a*(1+Math.sin(ph))} 60 60 T100 60`);
+  w2.setAttribute('d',`M28 74 Q44 ${74-c.a*.5*(1+Math.sin(ph+1))} 60 74 T92 74`);
+},60);
+
+/* 拖拽 + 点击 + 双击 */
+let dragStart=null,moved=false,lastTap=0;
+pet.addEventListener('pointerdown',e=>{
+  dragStart={x:e.clientX,y:e.clientY,l:pet.offsetLeft,t:pet.offsetTop};moved=false;pet.setPointerCapture(e.pointerId);});
+pet.addEventListener('pointermove',e=>{if(!dragStart)return;
+  const dx=e.clientX-dragStart.x,dy=e.clientY-dragStart.y;
+  if(Math.abs(dx)+Math.abs(dy)>6)moved=true;
+  if(moved){const st=document.getElementById('petStage');
+    pet.style.left=Math.max(0,Math.min(st.clientWidth-110,dragStart.l+dx))+'px';
+    pet.style.top=Math.max(0,Math.min(st.clientHeight-110,dragStart.t+dy))+'px';}});
+pet.addEventListener('pointerup',e=>{if(dragStart&&!moved){
+  const now=Date.now();
+  if(now-lastTap<300){lastTap=0;quickMood('😐 此刻心情');}
+  else{lastTap=now;openChat();}}
+  dragStart=null;});
+
+/* 闲时随机打滚 / 冒泡 */
+let idleT=0;
+setInterval(()=>{idleT++;if(idleT>8){idleT=0;
+  if(Math.random()<.6){petAnim('roll');}
+  else{const msgs=[`${S.nick||''}，今天还没跟我聊天哦～`,'有点想你了…','无聊ing，戳我一下嘛','今天的情绪，值得被记住'];
+    petSay(msgs[Math.floor(Math.random()*msgs.length)]);petAnim('jump');setPetState('expect','期待');}}},9000);
+['pointerdown','keydown'].forEach(ev=>document.addEventListener(ev,()=>idleT=0));
+
+function petSay(txt){const b=document.getElementById('petBubble');
+  b.textContent=txt;b.style.opacity=1;b.style.left='20px';b.style.top='20px';
+  setTimeout(()=>b.style.opacity=0,4200);}
+
+function quickMood(tag){
+  openChat();
+  const {emotion}=analyze('记录一下心情',tag);
+  pushRecord({ts:Date.now(),topic:'此刻心情',emotion,intensity:1,topics:['快速记录'],
+    focus:['此刻心情'],actions:[],orig:`${S.nick}：${tag}（双击桌宠快速记录）\n伙伴：记下来啦，${EMOJI[emotion]||''} 这个心情已经被回声收好了。`,crisis:false,note:''});
+  petSay('收到！这条心情已存入回声日历 📅');petAnim('jump');
+  toast('已记录到回声日历');}
+
+/* ================= 对话 ================= */
+let chat={msgs:[],mood:'',turn:0};
+function openChat(){document.getElementById('chatPanel').classList.add('open');
+  document.getElementById('chatTitle').textContent=`${S.nick}的回声伙伴`;
+  const mr=document.getElementById('moodRow');
+  if(!mr.children.length){MOODS.forEach(m=>{const c=document.createElement('button');
+    c.className='mood-chip';c.textContent=m;c.onclick=()=>{chat.mood=(chat.mood===m)?'':m;
+      mr.querySelectorAll('.mood-chip').forEach(x=>x.classList.remove('sel'));
+      if(chat.mood)c.classList.add('sel');};mr.appendChild(c);});}
+  if(!chat.msgs.length)addAi(`嗨，${S.nick}，今天怎么样？我在听 🐾`);
+  setPetState('think','倾听中');petAnim('jump');
+  setTimeout(()=>document.getElementById('msgInput').focus(),300);}
+function closeChat(){
+  // 结束对话→归档
+  if(chat.msgs.length>1){
+    const lastUser=[...chat.msgs].reverse().find(m=>m.role==='user');
+    const lastAi=[...chat.msgs].reverse().find(m=>m.role==='ai');
+    const a=chat.analysis||(lastUser?analyze(lastUser.text,chat.mood):null);
+    if(a&&lastAi){
+      pushRecord({ts:Date.now(),topic:a.topics[0],emotion:a.emotion,intensity:a.intensity,
+        topics:a.topics,focus:a.topics,
+        actions:lastAi.actions||[],orig:chat.msgs.map(m=>`${m.role==='user'?S.nick:'伙伴'}：${m.text}`).join('\n'),
+        crisis:chat.msgs.some(m=>m.crisis),note:''});}}
+  document.getElementById('chatPanel').classList.remove('open');
+  chat={msgs:[],mood:'',turn:0};document.getElementById('moodRow').querySelectorAll('.mood-chip').forEach(x=>x.classList.remove('sel'));
+  petAnim('breath');setPetState(['难过','低落','生气'].includes(petEmotion)?'guard':'calm','同频');}
+
+function bubble(m){
+  const f=document.getElementById('chatFlow');const d=document.createElement('div');
+  if(m.role==='user'){d.className='msg user';d.textContent=m.text;}
+  else{d.className='msg ai';
+    d.innerHTML=`<span class="seg"><b>💛 共情</b>${m.empathy}</span><span class="seg"><b>🔍 分析</b>${m.analysis}</span><span class="seg"><b>🌱 建议</b>${m.suggestion}</span>`;
+    if(m.crisis){const c=document.createElement('div');c.className='crisis-card';
+      c.innerHTML=`<b>⚠️ 这里有人在乎你</b><br>全国 24 小时心理援助热线：<a href="tel:4001619995">400-161-9995</a><br>也可以现在联系一位你信任的人。这条记录已被标记为"需关注"。`;f.appendChild(d);f.appendChild(c);scrollBottom();return;}}
+  f.appendChild(d);scrollBottom();}
+function scrollBottom(){const f=document.getElementById('chatFlow');f.scrollTop=f.scrollHeight;}
+function addAi(text){chat.msgs.push({role:'ai',text});bubble({role:'ai',text});}
+function sendMsg(){
+  const inp=document.getElementById('msgInput');const text=inp.value.trim();
+  if(!text){toast('说点什么吧～');return;}
+  inp.value='';inp.style.height='auto';
+  const f=document.getElementById('chatFlow');
+  const u=document.createElement('div');u.className='msg user';u.textContent=text+(chat.mood?` ${chat.mood.split(' ')[0]}`:'');f.appendChild(u);
+  chat.turn++;scrollBottom();petAnim('jump');setPetState('think','思考中');
+  const ty=document.createElement('div');ty.className='typing';ty.innerHTML='伙伴正在思考<span class="dots"><i></i><i></i><i></i></span>';f.appendChild(ty);scrollBottom();
+  const crisisLocal=detectCrisis(text);
+  const localAna=analyze(text,chat.mood);
+  petEmotion={'开心':'happy','难过':'sad','低落':'sad','生气':'sad',}[localAna.emotion]||'calm';
+  (async()=>{
+    try{
+      let r,ana=localAna,usedLLM=llmReady();
+      if(usedLLM){
+        const history=chat.msgs.slice(-8).map(m=>({role:m.role,content:m.text.replace(/^【[^】]+】/g,'').slice(0,500)}));
+        const out=await llmCall([{role:'system',content:systemPrompt()},...history,{role:'user',content:text+(chat.mood?'（用户情绪快选：'+chat.mood+'）':'')}]);
+        r=parseLLMReply(out);
+        // 深度分析（失败不阻塞）
+        try{const deep=await llmAnalyze(text,chat.mood);
+          if(deep&&deep.emotion){ana={emotion:deep.emotion,intensity:deep.intensity||3,topics:(deep.topics||[]).slice(0,3)};}}catch(e2){}
+      }else{
+        await new Promise(rs=>setTimeout(rs,900+Math.random()*600));
+        r=generateReply(text,localAna.emotion,chat.turn);
+      }
+      const crisis=crisisLocal||r.crisis;
+      if(crisis)r=CRISIS_REPLY;
+      const m={role:'ai',text:`【共情】${r.empathy}\n【分析】${r.analysis||'…'}\n【建议】${r.suggestion||'…'}`,
+        empathy:r.empathy,analysis:r.analysis,suggestion:r.suggestion,crisis};
+      m.actions=(ana.actions&&ana.actions.length)?ana.actions.slice(0,3)
+        :(r.suggestion.match(/(?:①|1[)、]|先)[^。；;]{4,20}/g)||['先照顾好自己']).slice(0,2);
+      chat.analysis=ana;chat.usedLLM=usedLLM;
+      chat.msgs.push(m);
+      ty.querySelector('.dots')&&(ty.innerHTML='');ty.remove();
+      bubble(m);
+      petAnim(crisis?'melt':(ana.emotion==='开心'?'jump':'melt'));
+      const neg=['难过','低落','生气','焦虑'].includes(ana.emotion);
+      setPetState(neg?'guard':'calm',neg?'守护':'同频');
+    }catch(err){
+      ty.remove();
+      const r=generateReply(text,localAna.emotion,chat.turn);
+      const m={role:'ai',text:`【共情】${r.empathy}\n【分析】${r.analysis}\n【建议】${r.suggestion}`,empathy:r.empathy,analysis:r.analysis,suggestion:r.suggestion,crisis:crisisLocal,actions:['先照顾好自己']};
+      chat.msgs.push(m);bubble(m);
+      toast('LLM 调用失败，已用模拟引擎回复：'+err.message.slice(0,40));
+    }
+  })();}
+
+document.getElementById('msgInput').addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();}});
+document.getElementById('msgInput').addEventListener('input',function(){this.style.height='auto';this.style.height=Math.min(90,this.scrollHeight)+'px';});
+
+/* ================= 回声记录 ================= */
+function pushRecord(r){r.id='r'+Date.now()+Math.random().toString(36).slice(2,6);
+  S.records.push(r);save();
+  const last=S.records[S.records.length-2];
+  if(r.crisis){petSay('这条记录我标记了"需关注"，你很重要 ❤️');}}
+function renderCal(){
+  const grid=document.getElementById('calGrid');grid.innerHTML='';
+  const y=viewDate.getFullYear(),m=viewDate.getMonth();
+  document.getElementById('calTitle').textContent=`${y} 年 ${m+1} 月`;
+  '日一二三四五六'.split('').forEach(w=>{const d=document.createElement('div');d.className='wd';d.textContent=w;grid.appendChild(d);});
+  const first=new Date(y,m,1).getDay(),days=new Date(y,m+1,0).getDate();
+  for(let i=0;i<first;i++)grid.appendChild(Object.assign(document.createElement('div'),{className:'cal-cell empty'}));
+  const today=dkey(Date.now());
+  for(let d=1;d<=days;d++){
+    const k=`${y}-${m+1}-${d}`;
+    const recs=S.records.filter(r=>dkey(r.ts)===k);
+    const c=document.createElement('div');c.className='cal-cell'+(k===today?' today':'')+(k===selDay?' sel':'');
+    c.innerHTML=`${d}<div class="dots">${recs.slice(0,3).map(()=>'<i></i>').join('')}</div>`;
+    c.onclick=()=>{selDay=k;renderCal();renderDay();};grid.appendChild(c);}
+  renderDay();}
+let viewDate=new Date(),selDay=dkey(Date.now());
+function shiftMonth(n){viewDate=new Date(viewDate.getFullYear(),viewDate.getMonth()+n,1);renderCal();}
+
+/* ================= 月度可视化（v1.1 核心） ================= */
+let vizDate=new Date();
+function renderEcho(){
+  renderCal();renderViz();openReport();}
+function switchEchoTab(t){
+  document.querySelectorAll('.etab').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
+  document.querySelectorAll('.echo-pane').forEach(p=>p.classList.remove('active'));
+  document.getElementById('pane'+t.charAt(0).toUpperCase()+t.slice(1))?.classList.add('active');
+  if(t==='viz')renderViz();
+  if(t==='cal')renderCal();
+  if(t==='week')openReport();}
+function shiftVizMonth(n){vizDate=new Date(vizDate.getFullYear(),vizDate.getMonth()+n,1);renderViz();}
+
+function getVizMonthData(){
+  const y=vizDate.getFullYear(),m=vizDate.getMonth();
+  const recs=S.records.filter(r=>{const d=new Date(r.ts);return d.getFullYear()===y&&d.getMonth()===m;});
+  const daysIn=new Date(y,m+1,0).getDate();
+  // 每日聚合
+  const daily=Array.from({length:daysIn},(_,i)=>({d:i+1,recs:[],avg:0,max:0,emotion:'—',count:0}));
+  recs.forEach(r=>{const d=new Date(r.ts).getDate();daily[d-1].recs.push(r);
+    daily[d-1].count++;daily[d-1].max=Math.max(daily[d-1].max,r.intensity);});
+  daily.forEach(d=>{if(d.count){d.avg=d.recs.reduce((s,r)=>s+r.intensity,0)/d.count;
+    const ec={};d.recs.forEach(r=>ec[r.emotion]=(ec[r.emotion]||0)+1);
+    d.emotion=Object.entries(ec).sort((a,b)=>b[1]-a[1])[0][0];}});
+  // 话题聚合
+  const topicCnt={};recs.forEach(r=>(r.topics||[r.topic]).forEach(t=>topicCnt[t]=(topicCnt[t]||0)+1));
+  // 散点：每条记录 = 一个点
+  const points=recs.map(r=>({x:Math.min(10,Math.max(1,(r.orig||'').split('\n').filter(l=>l.trim()).length)),
+    y:r.intensity,size:Math.min(40,10+(r.orig||'').length/20),emotion:r.emotion,id:r.id}));
+  return {recs,daily,topicCnt,points,y,m,total:recs.length};
+}
+
+function renderViz(){
+  const d=getVizMonthData();
+  document.getElementById('vizTitle').textContent=`${d.y} 年 ${d.m+1} 月`;
+  document.getElementById('vizEmpty').style.display=d.total<3?'block':'none';
+  // 摘要
+  let headline='本月情绪平稳';
+  if(d.total){
+    const neg=d.recs.filter(r=>['难过','低落','生气','焦虑'].includes(r.emotion)).length;
+    const pos=d.recs.filter(r=>r.emotion==='开心').length;
+    const ratio=neg/d.total;
+    if(ratio>0.5)headline='情绪偏负面，需要多照顾自己';
+    else if(pos/d.total>0.4)headline='情绪积极，回声里有阳光';
+    else if(ratio>0.3)headline='情绪有波动，看见就是疗愈的开始';
+  }
+  document.getElementById('vizSummary').innerHTML=
+    `<div class="v-num">💬 ${d.total} 次谈心</div>
+     <div class="v-desc">${d.total?headline:'还没有谈心记录——点伙伴聊聊吧'}</div>`;
+  if(d.total<3)return;
+  renderHeatmap(d);
+  renderWave(d);
+  renderDonut(d);
+  renderScatter(d);
+  renderInsight(d);
+}
+
+function renderHeatmap(d){
+  const el=document.getElementById('heatmapGrid');el.innerHTML='';
+  const y=d.y,m=d.m;
+  // 把 1 日对齐到周一位置
+  const firstWd=(new Date(y,m,1).getDay()+6)%7; // 0=周一
+  for(let i=0;i<firstWd;i++){const c=document.createElement('div');c.className='hm-cell';el.appendChild(c);}
+  const today=new Date();
+  for(let day=1;day<=d.daily.length;day++){
+    const c=document.createElement('div');
+    const info=d.daily[day-1];
+    const intensity=info.max;
+    let bg='#f4f4f8',fg='var(--sub)';
+    if(info.count){
+      if(intensity>=4){bg='#FF6B6B';fg='#fff';}
+      else if(intensity>=3){bg='#FFB347';fg='#fff';}
+      else if(intensity>=2){bg='#4ECDC4';fg='#fff';}
+      else{bg='#5B7FFF22';fg='var(--primary)';}
+    }
+    c.className='hm-cell'+(info.count?' has':'');
+    if(y===today.getFullYear()&&m===today.getMonth()&&day===today.getDate())c.classList.add('today');
+    c.style.background=bg;c.style.color=fg;
+    c.textContent=day;
+    if(info.count){
+      const dots=document.createElement('div');dots.className='hm-dots';
+      for(let i=0;i<Math.min(3,info.count);i++){const x=document.createElement('i');dots.appendChild(x);}
+      c.appendChild(dots);
+      c.title=`${day}日 · ${info.emotion} · 强度 ${intensity||'—'} · ${info.count}次`;
+      c.onclick=()=>{selDay=`${y}-${m+1}-${day}`;switchEchoTab('cal');renderCal();};
+    }
+    el.appendChild(c);
+  }
+}
+
+function renderWave(d){
+  const svg=document.getElementById('waveSvg');
+  const W=360,H=140,pad=8;
+  const N=d.daily.length;
+  const maxCount=Math.max(1,...d.daily.map(x=>x.count));
+  // 柱（背景）
+  let bars='';
+  d.daily.forEach((x,i)=>{
+    const bx=pad+i*(W-pad*2)/N;
+    const bw=(W-pad*2)/N*0.6;
+    const bh=x.count?(x.count/maxCount)*(H-pad*2)*0.4:0;
+    bars+=`<rect x="${bx}" y="${H-pad-bh}" width="${bw}" height="${bh}" fill="#5B7FFF22" rx="2"/>`;
+  });
+  // 面积曲线
+  const pts=d.daily.map((x,i)=>{
+    const px=pad+i*(W-pad*2)/Math.max(1,N-1);
+    const py=H-pad-(x.avg?x.avg/5*(H-pad*2-10):0);
+    return [px,py];
+  });
+  const path=pts.map((p,i)=>i===0?`M${p[0]} ${p[1]}`:`L${p[0]} ${p[1]}`).join(' ');
+  const area=path+` L${pts[pts.length-1]?.[0]||W-pad} ${H-pad} L${pts[0]?.[0]||pad} ${H-pad} Z`;
+  // 标注最高/最低
+  let maxI=0,minI=0;
+  d.daily.forEach((x,i)=>{if(x.avg>d.daily[maxI].avg)maxI=i;if(x.avg<d.daily[minI].avg)minI=i;});
+  const dot=(i,color)=>{const p=pts[i];if(!p||!d.daily[i].avg)return'';
+    return `<circle cx="${p[0]}" cy="${p[1]}" r="4" fill="${color}" stroke="#fff" stroke-width="2"/>`;};
+  svg.innerHTML=`
+    <defs><linearGradient id="waveG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5B7FFF" stop-opacity=".4"/><stop offset="1" stop-color="#5B7FFF" stop-opacity="0"/>
+    </linearGradient></defs>
+    ${bars}
+    <path d="${area}" fill="url(#waveG)"/>
+    <path d="${path}" fill="none" stroke="#5B7FFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    ${dot(maxI,'#FF6B6B')}${dot(minI,'#4ECDC4')}
+  `;
+  // 坐标
+  const ax=document.getElementById('waveAxis');
+  ax.innerHTML=`<span>1日</span><span>${Math.round(N/2)}日</span><span>${N}日</span>`;
+}
+
+function renderDonut(d){
+  const svg=document.getElementById('donutSvg');const legend=document.getElementById('donutLegend');
+  const entries=Object.entries(d.topicCnt).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  if(!entries.length){svg.innerHTML='';legend.innerHTML='<div class="empty-tip" style="margin:30px 0">暂无话题数据</div>';return;}
+  const total=entries.reduce((s,e)=>s+e[1],0);
+  const cx=100,cy=100,r=70,R=90;
+  const palette=['#5B7FFF','#4ECDC4','#FFB347','#FF6B6B','#9B59B6'];
+  let startAngle=0;
+  let paths='';
+  entries.forEach((e,i)=>{
+    const pct=e[1]/total;
+    const endAngle=startAngle+pct*Math.PI*2;
+    const x1=cx+r*Math.cos(startAngle),y1=cy+r*Math.sin(startAngle);
+    const x2=cx+r*Math.cos(endAngle),y2=cy+r*Math.sin(endAngle);
+    const X1=cx+R*Math.cos(startAngle),Y1=cy+R*Math.sin(startAngle);
+    const X2=cx+R*Math.cos(endAngle),Y2=cy+R*Math.sin(endAngle);
+    const large=pct>0.5?1:0;
+    paths+=`<path d="M${x1} ${y1} A${r} ${r} 0 ${large} 1 ${x2} ${y2} L${X2} ${Y2} A${R} ${R} 0 ${large} 0 ${X1} ${Y1} Z" fill="${palette[i]}" data-topic="${e[0]}"/>`;
+    startAngle=endAngle;
+  });
+  svg.innerHTML=paths;
+  document.getElementById('donutCenter').innerHTML=`<div class="v">${entries[0][0]}</div><div class="l">最常聊 · ${entries[0][1]}次</div>`;
+  legend.innerHTML=entries.map((e,i)=>`<div class="lg" data-topic="${e[0]}"><i style="background:${palette[i]}"></i>${e[0]} ${e[1]}次</div>`).join('');
+  const focus=topic=>{const recs=d.recs.filter(r=>(r.topics||[r.topic]).includes(topic));
+    toast(`本月「${topic}」相关 ${recs.length} 次`);};
+  svg.querySelectorAll('path').forEach(p=>p.onclick=()=>focus(p.dataset.topic));
+  legend.querySelectorAll('.lg').forEach(g=>g.style.cursor='pointer',g.onclick=()=>focus(g.dataset.topic));
+}
+
+function renderScatter(d){
+  const svg=document.getElementById('scatterSvg');
+  const W=360,H=200,pad=24;
+  const xs=d.points.map(p=>p.x),ys=d.points.map(p=>p.y);
+  const xMin=Math.min(1,...xs),xMax=Math.max(10,...xs);
+  const yMin=0,yMax=5;
+  // 网格
+  let grid='';
+  for(let i=0;i<=5;i++){const y=pad+i*(H-pad*2)/5;grid+=`<line x1="${pad}" y1="${y}" x2="${W-pad}" y2="${y}" stroke="#f0f0f5" stroke-width="1"/>`;
+    grid+=`<text x="4" y="${y+3}" font-size="9" fill="#9999AA">${5-i}</text>`;}
+  // 点
+  const colorMap={'开心':'#FFB347','难过':'#5B7FFF','低落':'#9B59B6','生气':'#FF6B6B','一般':'#9999AA','疲惫':'#4ECDC4'};
+  const dots=d.points.map(p=>{
+    const x=pad+(p.x-xMin)/(xMax-xMin||1)*(W-pad*2);
+    const y=pad+(yMax-p.y)/(yMax-yMin)*(H-pad*2);
+    return `<circle cx="${x}" cy="${y}" r="${Math.max(4,Math.sqrt(p.size))}" fill="${colorMap[p.emotion]||'#5B7FFF'}" fill-opacity=".55" stroke="${colorMap[p.emotion]||'#5B7FFF'}" data-id="${p.id}"><title>${p.emotion} · 强度${p.y} · ${p.x}轮</title></circle>`;
+  }).join('');
+  svg.innerHTML=grid+dots;
+  svg.querySelectorAll('circle[data-id]').forEach(c=>c.style.cursor='pointer',
+    c.onclick=()=>openDetail(c.dataset.id));
+}
+
+function renderInsight(d){
+  const list=document.getElementById('insightList');
+  // 1) 本月最佳
+  const best=d.recs.filter(r=>r.emotion==='开心').sort((a,b)=>b.intensity-a.intensity)[0];
+  // 2) 最常聊主题
+  const topTopic=Object.entries(d.topicCnt).sort((a,b)=>b[1]-a[1])[0];
+  // 3) 负面趋势（连续 3 天以上高强度）
+  let negStreak=0,maxStreak=0;
+  d.daily.forEach(x=>{if(x.max>=4){negStreak++;maxStreak=Math.max(maxStreak,negStreak);}else negStreak=0;});
+  // 4) 深夜记录次数
+  const night=d.recs.filter(r=>{const h=new Date(r.ts).getHours();return h>=22||h<5;}).length;
+  // 5) 强度趋势
+  const firstHalf=d.daily.slice(0,15).reduce((s,x)=>s+x.avg,0)/15||0;
+  const secondHalf=d.daily.slice(15).reduce((s,x)=>s+x.avg,0)/Math.max(1,d.daily.length-15)||0;
+  const trend=secondHalf>firstHalf+0.3?'走高':secondHalf<firstHalf-0.3?'趋于平稳':'波动明显';
+
+  const cards=[];
+  if(best)cards.push({type:'positive',title:'🌟 本月最佳时刻',
+    body:`${best.topic} · 强度 ${best.intensity}/5 · ${fmtT(best.ts)}`});
+  if(topTopic)cards.push({type:'default',title:'💬 你最常聊的事',
+    body:`「${topTopic[0]}」共 ${topTopic[1]} 次，占本月对话的 ${Math.round(topTopic[1]/d.total*100)}%。`});
+  if(maxStreak>=3)cards.push({type:'warning',title:'⚠️ 需要关注',
+    body:`本月有连续 ${maxStreak} 天情绪强度 ≥ 4，建议周末给自己放个假，或找朋友聊聊。`});
+  cards.push({type:'default',title:'📈 情绪走势',
+    body:`相比上半月，本月下旬整体${trend}。${night>3?`另外有 ${night} 次深夜谈心，记得照顾睡眠。`:'保持规律作息，继续加油。'}`});
+
+  list.innerHTML=cards.map(c=>`<div class="insight-card ${c.type}"><strong>${c.title}</strong>${c.body}</div>`).join('');
+}
+
+/* ================= 右键菜单 ================= */
+let ctxTarget=null;
+function showCtxMenu(x,y,recordId){
+  hideCtxMenu();
+  const m=document.createElement('div');m.className='ctx-menu';m.id='ctxMenu';
+  m.style.left=x+'px';m.style.top=y+'px';
+  m.innerHTML=`
+    <button onclick="hideCtxMenu();openDetail('${recordId}')">👁️ 查看详情</button>
+    <button onclick="hideCtxMenu();editNoteInline('${recordId}')">✏️ 编辑备注</button>
+    <button class="danger" onclick="hideCtxMenu();ctxDelRecord('${recordId}')">🗑️ 删除这条</button>`;
+  document.body.appendChild(m);
+  // 防止溢出
+  setTimeout(()=>{document.addEventListener('click',hideCtxMenu,{once:true});},0);}
+function hideCtxMenu(){const m=document.getElementById('ctxMenu');if(m)m.remove();}
+function ctxDelRecord(id){delRecord(id);} // 已存在
+function editNoteInline(id){openDetail(id);setTimeout(()=>document.getElementById('noteBox')?.focus(),200);}
+
+function renderDay(){
+  const el=document.getElementById('dayList');
+  const recs=S.records.filter(r=>dkey(r.ts)===selDay).sort((a,b)=>a.ts-b.ts);
+  if(!recs.length){el.innerHTML='<div class="empty-tip">这一天还没有回声<br>去和伙伴聊聊吧 🐾</div>';return;}
+  el.innerHTML=recs.map(r=>`
+    <div class="rec-card" onclick="openDetail('${r.id}')" oncontextmenu="event.preventDefault();showCtxMenu(event.clientX,event.clientY,'${r.id}')">
+      <div class="rec-top"><span class="emo">${EMOJI[r.emotion]||'💬'}</span><b>${r.topic}</b>
+        <span class="inten">${'●'.repeat(r.intensity)}${'○'.repeat(5-r.intensity)}</span></div>
+      <div class="rec-tags">${r.topics.map(t=>`<span class="tag">${t}</span>`).join('')}${r.actions.map(a=>`<span class="tag act">✓ ${a}</span>`).join('')}</div>
+      <div class="rec-time">${fmtT(r.ts)}</div>
+      ${r.note?`<div class="rec-note">📝 ${r.note}</div>`:''}
+      ${r.crisis?'<div class="crisis-flag">⚠️ 需关注</div>':''}
+    </div>`).join('');}
+function openDetail(id){
+  const r=S.records.find(x=>x.id===id);if(!r)return;
+  document.getElementById('detailTitle').textContent=`${r.topic} · ${fmtT(r.ts)}`;
+  document.getElementById('detailBody').innerHTML=`
+    <div class="kv"><b>情绪</b>${EMOJI[r.emotion]||''} ${r.emotion} · 强度 ${r.intensity}/5 ${r.crisis?'<span style="color:var(--coral)">· ⚠️ 需关注</span>':''}</div>
+    <div class="kv"><b>关注点</b>${r.focus.join('、')}</div>
+    ${r.actions.length?`<div class="kv"><b>行动建议</b>${r.actions.map(a=>'✓ '+a).join('<br>')}</div>`:''}
+    <div class="kv"><b>对话原文</b><div class="orig">${r.orig.replace(/\n/g,'<br>')}</div></div>
+    <div class="kv"><b>我的备注</b><textarea class="notebox" id="noteBox" placeholder="写点什么…">${r.note||''}</textarea></div>
+    <button class="btn" style="width:100%" onclick="saveNote('${r.id}')">保存备注</button>
+    <button class="danger-btn" onclick="delRecord('${r.id}')">删除这条回声</button>`;
+  document.getElementById('detailPanel').classList.add('open');}
+function saveNote(id){const r=S.records.find(x=>x.id===id);r.note=document.getElementById('noteBox').value.trim();save();toast('备注已保存');}
+function delRecord(id){if(!confirm('确定删除这条回声吗？'))return;S.records=S.records.filter(x=>x.id!==id);save();
+  document.getElementById('detailPanel').classList.remove('open');renderCal();toast('已删除');}
+
+/* 周报告 */
+function openReport(){
+  const now=new Date();const end=new Date(now);end.setDate(now.getDate()-now.getDay());const start=new Date(end);start.setDate(end.getDate()-6);
+  const recs=S.records.filter(r=>{const d=new Date(r.ts);return d>=start&&d<new Date(end.getTime()+864e5);});
+  const el=document.getElementById('weekReport')||document.getElementById('dayList');
+  if(!el)return;
+  const byDay=[];for(let i=0;i<7;i++){const d=new Date(start);d.setDate(start.getDate()+i);
+    const k=dkey(d.getTime());const day=S.records.filter(r=>dkey(r.ts)===k);
+    byDay.push({n:day.length,avg:day.length?(day.reduce((s,r)=>s+(r.emotion==='开心'?5:r.emotion==='一般'?4:3),0)/day.length):0});}
+  const topicCnt={};recs.forEach(r=>r.topics.forEach(t=>topicCnt[t]=(topicCnt[t]||0)+1));
+  const tops=Object.entries(topicCnt).sort((a,b)=>b[1]-a[1]).slice(0,3);
+  const pos=recs.filter(r=>r.emotion==='开心');
+  if(!recs.length){el.innerHTML='<div class="empty-tip">本周还没有回声记录</div>';return;}
+  const maxV=5;
+  el.innerHTML=`
+   <div class="report">
+     <h3>📅 本周回声报告</h3>
+     <div class="row">${fmtRange(start,end)} · 共 ${recs.length} 条回声</div>
+     <div class="trend">${byDay.map((d,i)=>`<div class="bar" style="height:${d.n?(d.avg/maxV*70):4}px"><span>${d.n||''}</span><em>${'日一二三四五六'[i]}</em></div>`).join('')}</div>
+     <div class="row">📊 高频主题：<b>${tops.map(t=>`${t[0]}(${t[1]}次)`).join(' · ')}</b></div>
+     ${pos.length?`<div class="row">🌟 积极时刻：${pos.map(r=>r.topic).join('、')}</div>`:''}
+     <div class="row">💭 本周洞察：${tops[0]?`「${tops[0][0]}」是你本周最关注的话题，情绪强度平均 ${(recs.reduce((s,r)=>s+r.intensity,0)/recs.length).toFixed(1)}。记得在情绪高峰时也照顾好自己。`:'继续和伙伴聊聊，让回声更丰富吧。'}</div>
+   </div>`+recs.map(r=>`<div class="rec-card" onclick="openDetail('${r.id}')">
+     <div class="rec-top"><span class="emo">${EMOJI[r.emotion]||'💬'}</span><b>${r.topic}</b><span class="inten">${fmtT(r.ts)}</span></div></div>`).join('');}
+function fmtRange(a,b){return `${a.getMonth()+1}.${a.getDate()} - ${b.getMonth()+1}.${b.getDate()}`}
+
+/* ================= 我的 ================= */
+function renderMe(){
+  document.getElementById('meNick').textContent=S.nick||'—';
+  document.getElementById('meAge').textContent=Math.max(1,Math.ceil((Date.now()-S.createdAt)/864e5))+' 天';
+  renderStyleOptions('styleGrid');fillLLMForm();renderPet();
+  const cg=document.getElementById('colorGrid');cg.innerHTML='';
+  COLORS.forEach((c,i)=>{const d=document.createElement('div');d.className='color-dot'+(S.petColor===i?' sel':'');
+    d.style.background=`linear-gradient(135deg,${c[0]},${c[1]})`;d.onclick=()=>{S.petColor=i;save();applyColor();renderMe();toast('伙伴换上新颜色啦');petAnim('jump');};cg.appendChild(d);});
+  const total=S.records.length;
+  const topics={};S.records.forEach(r=>r.topics.forEach(t=>topics[t]=(topics[t]||0)+1));
+  const top=Object.entries(topics).sort((a,b)=>b[1]-a[1])[0];
+  document.getElementById('statGrid').innerHTML=`
+    <div><div class="num">${total}</div><div class="lbl">累计回声</div></div>
+    <div><div class="num">${new Set(S.records.map(r=>dkey(r.ts))).size}</div><div class="lbl">记录天数</div></div>
+    <div><div class="num" style="font-size:15px;padding-top:6px">${top?top[0]:'—'}</div><div class="lbl">最常关注</div></div>`;}
+function editNick(){const n=prompt('新昵称：',S.nick);if(n&&n.trim()){S.nick=n.trim();save();renderMe();petSay(`好的，${S.nick}！`);}}
+function exportData(){
+  const blob=new Blob([JSON.stringify({exportedAt:new Date().toISOString(),...S},null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='EchoYou_回声数据.json';a.click();toast('已导出 JSON');}
+function deleteAll(){
+  if(!confirm('⚠️ 将删除全部回声记录与设置，且不可恢复。确定吗？'))return;
+  if(!confirm('再次确认：真的要全部删除吗？'))return;
+  localStorage.removeItem(KEY);location.reload();}
+
+/* 初始化 */
+applyColor();renderPet();
+if(S.onboarded){document.getElementById('petGreet').textContent=llmReady()?`${S.nick}，今天怎么样？（AI 引擎已启用）`:`${S.nick}，今天怎么样？点击伙伴聊聊吧`;}
+</script>
+</body>
+</html>
